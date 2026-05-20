@@ -23,6 +23,7 @@ export default function Home() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // ✅ データ取得
   const fetchData = async () => {
     const { data } = await supabase
       .from("diary")
@@ -36,10 +37,17 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // ✅ ✅ 修正済（これが重要）
   const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    setForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
+  // ✅ AI生成
   const generateAI = async (data: any) => {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -55,6 +63,7 @@ export default function Home() {
     return result.result;
   };
 
+  // ✅ 保存
   const saveData = async () => {
     setLoading(true);
 
@@ -87,11 +96,13 @@ export default function Home() {
     setLoading(false);
   };
 
+  // ✅ 削除
   const deleteEntry = async (entry: any) => {
     await supabase.from("diary").delete().eq("id", entry.id);
     fetchData();
   };
 
+  // ✅ 日付クリック処理
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -121,7 +132,7 @@ export default function Home() {
     }
   };
 
-  // ✅ ボックスUI
+  // ✅ UIボックス
   const FormBox = ({ label, children }: any) => (
     <div className="box">
       <label>{label}</label>
@@ -154,14 +165,15 @@ export default function Home() {
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
           <button
-            onClick={() => setForm({ ...form, relied: "yes" })}
-            className={form.relied === "yes" ? "btn active yes" : "btn"}
+            onClick={() => setForm(prev => ({ ...prev, relied: "yes" }))}
+            className={form.relied === "yes" ? "btn yes active" : "btn"}
           >
             はい
           </button>
+
           <button
-            onClick={() => setForm({ ...form, relied: "no" })}
-            className={form.relied === "no" ? "btn active no" : "btn"}
+            onClick={() => setForm(prev => ({ ...prev, relied: "no" }))}
+            className={form.relied === "no" ? "btn no active" : "btn"}
           >
             いいえ
           </button>
@@ -189,15 +201,21 @@ export default function Home() {
           <strong>{entry.date}</strong>
 
           <p className="main">{entry.shortComment}</p>
-          <p>{entry.emotion}</p>
-          <p>{entry.event}</p>
+          <p>😊 {entry.emotion}</p>
+          <p>📌 {entry.event}</p>
+          <p>🏃 {entry.action}</p>
 
-          <button onClick={() => setForm(entry)}>編集</button>
-          <button onClick={() => deleteEntry(entry)}>削除</button>
+          <button onClick={() => setForm(entry)}>
+            編集
+          </button>
+
+          <button onClick={() => deleteEntry(entry)}>
+            削除
+          </button>
         </div>
       ))}
 
-      {/* ✅ ダーク/ライト対応CSS */}
+      {/* ✅ ダーク/ライト対応 */}
       <style jsx global>{`
         body {
           background: white;
@@ -221,21 +239,21 @@ export default function Home() {
           margin-top: 12px;
           padding: 10px;
           border-radius: 8px;
-          border: 1px solid #aaa;
+          border: 1px solid #888;
         }
 
         textarea {
           width: 100%;
           min-height: 60px;
-          border-radius: 5px;
           padding: 5px;
+          border-radius: 5px;
         }
 
         .btn {
           padding: 6px 12px;
-          background: gray;
-          color: white;
           border-radius: 6px;
+          color: white;
+          background: gray;
         }
 
         .yes {
@@ -260,8 +278,8 @@ export default function Home() {
         .card {
           border: 1px solid gray;
           padding: 10px;
-          margin-top: 10px;
           border-radius: 8px;
+          margin-top: 10px;
         }
 
         .main {
