@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* ✅ 外に出す */
+/* ✅ 外に出す（重要） */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -31,6 +31,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [weekSummary, setWeekSummary] = useState("");
 
+  // ✅ データ取得
   const fetchData = async () => {
     const { data } = await supabase
       .from("diary")
@@ -44,6 +45,7 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // ✅ 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
 
@@ -53,6 +55,7 @@ export default function Home() {
     }));
   };
 
+  // ✅ AI
   const generateAI = async (data: any) => {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -68,6 +71,7 @@ export default function Home() {
     return result.result;
   };
 
+  // ✅ 週間まとめ
   const generateWeeklySummary = async () => {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -80,6 +84,7 @@ export default function Home() {
     setWeekSummary(result.result);
   };
 
+  // ✅ 保存
   const saveData = async () => {
     setLoading(true);
 
@@ -107,6 +112,7 @@ export default function Home() {
     setLoading(false);
   };
 
+  // ✅ 日付
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -120,6 +126,7 @@ export default function Home() {
 
   const isSunday = selectedDate.getDay() === 0;
 
+  // ✅ グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
   const rate = total ? Math.round((success / total) * 100) : 0;
@@ -146,14 +153,22 @@ export default function Home() {
         <textarea name="honest" value={form.honest} onChange={handleChange}/>
       </FormBox>
 
+      {/* ✅ ボタン色分け */}
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
-          {/* ✅ 修正ここ */}
-          <button type="button" onClick={() => setForm(p => ({ ...p, relied: "yes" }))}>
+          <button
+            type="button"
+            onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
+            className={`btn ${form.relied === "yes" ? "yes active" : ""}`}
+          >
             はい
           </button>
 
-          <button type="button" onClick={() => setForm(p => ({ ...p, relied: "no" }))}>
+          <button
+            type="button"
+            onClick={() => setForm(p => ({ ...p, relied: "no" }))}
+            className={`btn ${form.relied === "no" ? "no active" : ""}`}
+          >
             いいえ
           </button>
         </div>
@@ -167,21 +182,23 @@ export default function Home() {
         <textarea name="shortComment" value={form.shortComment} onChange={handleChange}/>
       </FormBox>
 
-      {/* ✅ 修正ここ */}
-      <button type="button" onClick={saveData}>
+      <button type="button" className="save" onClick={saveData}>
         {loading ? "生成中..." : "保存"}
       </button>
 
       {/* ✅ 頼れ率 */}
-      <h2>頼れ率</h2>
-      <div className="graph">
-        <p>{rate}%</p>
-        <div className="bar">
-          <div className="barFill" style={{ width: `${rate}%` }} />
-        </div>
+      <h2>頼れ率 {rate}%</h2>
+      <div className="bar">
+        <div
+          className="fill"
+          style={{
+            width: `${rate}%`,
+            background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
+          }}
+        />
       </div>
 
-      {/* ✅ 日曜まとめ */}
+      {/* ✅ 日曜日限定 */}
       {isSunday && (
         <div className="weekly">
           <h2>週間まとめAI</h2>
@@ -194,6 +211,7 @@ export default function Home() {
 
       {/* ✅ スタイル */}
       <style jsx global>{`
+
         body {
           background: white;
           color: black;
@@ -224,26 +242,44 @@ export default function Home() {
           border-radius: 8px;
         }
 
-        button {
-          padding: 6px 10px;
+        /* ✅ ボタン */
+        .btn {
+          padding: 8px 12px;
           border-radius: 6px;
           border: none;
-          cursor: pointer;
+          background: gray;
+          color: white;
+          opacity: 0.5;
         }
 
-        .graph {
-          border: 1px solid gray;
+        .active {
+          opacity: 1;
+        }
+
+        .yes.active {
+          background: #00c853;
+        }
+
+        .no.active {
+          background: #d50000;
+        }
+
+        .save {
+          margin-top: 10px;
+          width: 100%;
           padding: 10px;
+          border-radius: 8px;
         }
 
+        /* ✅ グラフ */
         .bar {
           background: #ddd;
           height: 10px;
+          margin: 10px 0;
         }
 
-        .barFill {
+        .fill {
           height: 100%;
-          background: green;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -258,13 +294,27 @@ export default function Home() {
           border: 2px solid gray;
         }
 
-        /* ✅ カレンダー */
+        /* ✅ カレンダー（ダーク対応） */
         @media (prefers-color-scheme: dark) {
           .react-calendar {
             background: #222 !important;
             color: white !important;
           }
+
+          .react-calendar__tile {
+            color: white !important;
+          }
+
+          .react-calendar__tile--now {
+            background: orange !important;
+            color: black !important;
+          }
+
+          .react-calendar__tile--active {
+            background: #2196f3 !important;
+          }
         }
+
       `}</style>
     </div>
   );
