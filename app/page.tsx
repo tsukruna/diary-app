@@ -4,6 +4,14 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
+/* ✅ 重要：外に出す！！（これが1文字バグ修正の核心） */
+const FormBox = ({ label, children }: any) => (
+  <div className="box">
+    <label>{label}</label>
+    {children}
+  </div>
+);
+
 export default function Home() {
 
   const [form, setForm] = useState({
@@ -37,7 +45,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ ✅ 修正済（これが重要）
+  // ✅ ✅ 修正済（安定版）
   const handleChange = (e: any) => {
     const { name, value } = e.target;
 
@@ -102,7 +110,7 @@ export default function Home() {
     fetchData();
   };
 
-  // ✅ 日付クリック処理
+  // ✅ カレンダー連動
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -131,14 +139,6 @@ export default function Home() {
       setEditIndex(null);
     }
   };
-
-  // ✅ UIボックス
-  const FormBox = ({ label, children }: any) => (
-    <div className="box">
-      <label>{label}</label>
-      {children}
-    </div>
-  );
 
   return (
     <div className="container">
@@ -205,13 +205,8 @@ export default function Home() {
           <p>📌 {entry.event}</p>
           <p>🏃 {entry.action}</p>
 
-          <button onClick={() => setForm(entry)}>
-            編集
-          </button>
-
-          <button onClick={() => deleteEntry(entry)}>
-            削除
-          </button>
+          <button onClick={() => setForm(entry)}>編集</button>
+          <button onClick={() => deleteEntry(entry)}>削除</button>
         </div>
       ))}
 
@@ -247,6 +242,7 @@ export default function Home() {
           min-height: 60px;
           padding: 5px;
           border-radius: 5px;
+          border: 1px solid #aaa;
         }
 
         .btn {
@@ -257,11 +253,11 @@ export default function Home() {
         }
 
         .yes {
-          background: green;
+          background: #00c853;
         }
 
         .no {
-          background: red;
+          background: #d50000;
         }
 
         .active {
