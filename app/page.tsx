@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* ✅ 重要：外に出す！！（これが1文字バグ修正の核心） */
+/* ✅ 重要：外に出す */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -45,17 +45,16 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ ✅ 修正済（安定版）
+  // ✅ バグ修正（1文字問題）
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-
     setForm(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  // ✅ AI生成
+  // ✅ AI
   const generateAI = async (data: any) => {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -165,18 +164,14 @@ export default function Home() {
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
           <button
-            onClick={() => setForm(prev => ({ ...prev, relied: "yes" }))}
+            onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
             className={form.relied === "yes" ? "btn yes active" : "btn"}
-          >
-            はい
-          </button>
+          >はい</button>
 
           <button
-            onClick={() => setForm(prev => ({ ...prev, relied: "no" }))}
+            onClick={() => setForm(p => ({ ...p, relied: "no" }))}
             className={form.relied === "no" ? "btn no active" : "btn"}
-          >
-            いいえ
-          </button>
+          >いいえ</button>
         </div>
       </FormBox>
 
@@ -199,19 +194,18 @@ export default function Home() {
       {entries.map((entry) => (
         <div key={entry.id} className="card">
           <strong>{entry.date}</strong>
-
           <p className="main">{entry.shortComment}</p>
           <p>😊 {entry.emotion}</p>
           <p>📌 {entry.event}</p>
-          <p>🏃 {entry.action}</p>
 
           <button onClick={() => setForm(entry)}>編集</button>
           <button onClick={() => deleteEntry(entry)}>削除</button>
         </div>
       ))}
 
-      {/* ✅ ダーク/ライト対応 */}
+      {/* ✅ ダーク/ライト対応 + カレンダー修正 */}
       <style jsx global>{`
+
         body {
           background: white;
           color: black;
@@ -242,7 +236,6 @@ export default function Home() {
           min-height: 60px;
           padding: 5px;
           border-radius: 5px;
-          border: 1px solid #aaa;
         }
 
         .btn {
@@ -252,23 +245,15 @@ export default function Home() {
           background: gray;
         }
 
-        .yes {
-          background: #00c853;
-        }
+        .yes { background: #00c853; }
+        .no { background: #d50000; }
 
-        .no {
-          background: #d50000;
-        }
-
-        .active {
-          border: 2px solid black;
-        }
+        .active { border: 2px solid black; }
 
         .save {
           margin-top: 10px;
           width: 100%;
           padding: 10px;
-          font-size: 16px;
         }
 
         .card {
@@ -278,9 +263,42 @@ export default function Home() {
           margin-top: 10px;
         }
 
-        .main {
-          font-weight: bold;
+        .main { font-weight: bold; }
+
+        /* ===== カレンダー改善 ===== */
+
+        @media (prefers-color-scheme: dark) {
+          .react-calendar {
+            background: #222 !important;
+            color: white !important;
+          }
+
+          .react-calendar__tile {
+            color: white !important;
+          }
+
+          .react-calendar__tile--now {
+            background: orange !important;
+            color: black !important;
+          }
+
+          .react-calendar__tile--active {
+            background: #2196f3 !important;
+            color: white !important;
+          }
         }
+
+        @media (prefers-color-scheme: light) {
+          .react-calendar {
+            background: white !important;
+            color: black !important;
+          }
+
+          .react-calendar__tile {
+            color: black !important;
+          }
+        }
+
       `}</style>
     </div>
   );
