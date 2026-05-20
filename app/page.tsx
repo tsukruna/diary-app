@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* ✅ 重要：外に出す */
+/* ✅ 外に出す（バグ防止） */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -30,6 +30,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [weekSummary, setWeekSummary] = useState("");
 
   // ✅ データ取得
   const fetchData = async () => {
@@ -37,7 +38,6 @@ export default function Home() {
       .from("diary")
       .select("*")
       .order("date", { ascending: false });
-
     setEntries(data || []);
   };
 
@@ -45,7 +45,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ バグ修正（1文字問題）
+  // ✅ 入力処理
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm(prev => ({
@@ -68,6 +68,24 @@ export default function Home() {
 
     const result = await res.json();
     return result.result;
+  };
+
+  // ✅ 週間まとめAI
+  const generateWeeklySummary = async () => {
+    const last7 = entries.slice(0, 7);
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          text: JSON.stringify(last7),
+          mode: "weekly"
+        }
+      })
+    });
+
+    const result = await res.json();
+    setWeekSummary(result.result);
   };
 
   // ✅ 保存
@@ -109,7 +127,7 @@ export default function Home() {
     fetchData();
   };
 
-  // ✅ カレンダー連動
+  // ✅ カレンダー
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -139,6 +157,14 @@ export default function Home() {
     }
   };
 
+  // ✅ 日曜判定
+  const isSunday = selectedDate.getDay() === 0;
+
+  // ✅ 頼れ率
+  const total = entries.length;
+  const success = entries.filter(e => e.relied === "yes").length;
+  const rate = total ? Math.round((success / total) * 100) : 0;
+
   return (
     <div className="container">
       <h1>自己改善日記</h1>
@@ -163,15 +189,12 @@ export default function Home() {
 
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
-            className={form.relied === "yes" ? "btn yes active" : "btn"}
-          >はい</button>
-
-          <button
-            onClick={() => setForm(p => ({ ...p, relied: "no" }))}
-            className={form.relied === "no" ? "btn no active" : "btn"}
-          >いいえ</button>
+          <button onClick={() => setForm(p => ({ ...p, relied: "yes" }))}>
+            はい
+          </button>
+          <button onClick={() => setForm(p => ({ ...p, relied: "no" }))}>
+            いいえ
+          </button>
         </div>
       </FormBox>
 
@@ -183,27 +206,46 @@ export default function Home() {
         <textarea name="shortComment" value={form.shortComment} onChange={handleChange}/>
       </FormBox>
 
-      <button className="save" onClick={saveData}>
+      <button onClick={saveData}>
         {loading ? "生成中..." : "保存"}
       </button>
+
+      {/* ✅ 頼れ率 */}
+      <h2>頼れ率</h2>
+      <div className="graph">
+        <p>{rate}%</p>
+        <div className="bar">
+          <div className="barFill" style={{
+            width: `${rate}%`,
+            background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
+          }} />
+        </div>
+      </div>
+
+      {/* ✅ 日曜限定 週間AI */}
+      {isSunday && (
+        <div className="weekly">
+          <h2>週間まとめAI</h2>
+          <button onClick={generateWeeklySummary}>
+            1週間まとめ生成
+          </button>
+
+          {weekSummary && <p>{weekSummary}</p>}
+        </div>
+      )}
 
       <hr />
 
       <h2>記録一覧</h2>
 
-      {entries.map((entry) => (
-        <div key={entry.id} className="card">
-          <strong>{entry.date}</strong>
-          <p className="main">{entry.shortComment}</p>
-          <p>😊 {entry.emotion}</p>
-          <p>📌 {entry.event}</p>
-
-          <button onClick={() => setForm(entry)}>編集</button>
-          <button onClick={() => deleteEntry(entry)}>削除</button>
+      {entries.map(e => (
+        <div key={e.id} className="card">
+          <strong>{e.date}</strong>
+          <p>{e.shortComment}</p>
         </div>
       ))}
 
-      {/* ✅ ダーク/ライト対応 + カレンダー修正 */}
+      {/* ✅ スタイル */}
       <style jsx global>{`
 
         body {
@@ -225,78 +267,36 @@ export default function Home() {
         }
 
         .box {
-          margin-top: 12px;
+          margin-top: 10px;
           padding: 10px;
+          border: 1px solid gray;
           border-radius: 8px;
-          border: 1px solid #888;
         }
 
         textarea {
           width: 100%;
           min-height: 60px;
-          padding: 5px;
-          border-radius: 5px;
         }
 
-        .btn {
-          padding: 6px 12px;
-          border-radius: 6px;
-          color: white;
-          background: gray;
-        }
-
-        .yes { background: #00c853; }
-        .no { background: #d50000; }
-
-        .active { border: 2px solid black; }
-
-        .save {
-          margin-top: 10px;
-          width: 100%;
-          padding: 10px;
-        }
-
-        .card {
+        .graph {
           border: 1px solid gray;
           padding: 10px;
-          border-radius: 8px;
           margin-top: 10px;
         }
 
-        .main { font-weight: bold; }
-
-        /* ===== カレンダー改善 ===== */
-
-        @media (prefers-color-scheme: dark) {
-          .react-calendar {
-            background: #222 !important;
-            color: white !important;
-          }
-
-          .react-calendar__tile {
-            color: white !important;
-          }
-
-          .react-calendar__tile--now {
-            background: orange !important;
-            color: black !important;
-          }
-
-          .react-calendar__tile--active {
-            background: #2196f3 !important;
-            color: white !important;
-          }
+        .bar {
+          background: #ddd;
+          height: 10px;
         }
 
-        @media (prefers-color-scheme: light) {
-          .react-calendar {
-            background: white !important;
-            color: black !important;
-          }
+        .barFill {
+          height: 100%;
+        }
 
-          .react-calendar__tile {
-            color: black !important;
-          }
+        .weekly {
+          margin-top: 20px;
+          padding: 10px;
+          border: 2px solid #888;
         }
 
       `}</style>
