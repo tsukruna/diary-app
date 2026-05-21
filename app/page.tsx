@@ -28,7 +28,6 @@ export default function Home() {
 
   const [entries, setEntries] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [loading, setLoading] = useState(false);
   const [weekSummary, setWeekSummary] = useState("");
 
   // ✅ データ取得
@@ -45,64 +44,34 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ 入力（バグ防止）
+  // ✅ 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-
     setForm(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  // ✅ AI（デバッグ強化）
+  // ✅ AI生成
   const generateAI = async (data: any) => {
-    console.log("AI開始");
-
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         body: JSON.stringify({ data })
       });
 
-      console.log("レスポンス受信");
+      const json = await res.json();
+      return json.result;
 
-      if (!res.ok) {
-        console.error("APIエラー", res.status);
-        return "AI生成失敗";
-      }
-
-      const result = await res.json();
-      console.log("AI結果", result);
-
-      return result.result;
-
-    } catch (e) {
-      console.error("AIエラー", e);
-      return "エラー発生";
+    } catch {
+      return "AI生成エラー";
     }
   };
 
-  // ✅ 週間AI
-  const generateWeeklySummary = async () => {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        data: { text: JSON.stringify(entries.slice(0, 7)) }
-      })
-    });
-
-    const result = await res.json();
-    setWeekSummary(result.result);
-  };
-
-  // ✅ 保存（高速化 + デバッグ）
+  // ✅ 保存（即保存→AI更新）
   const saveData = async () => {
-    console.log("保存開始");
 
-    setLoading(true);
-
-    // ✅ 即保存
     const { data } = await supabase
       .from("diary")
       .insert([{
@@ -113,12 +82,9 @@ export default function Home() {
 
     fetchData();
 
-    // ✅ AI生成
     const summary = await generateAI(form);
 
-    console.log("AI完了", summary);
-
-    if (data && data[0]) {
+    if (data?.[0]) {
       await supabase
         .from("diary")
         .update({ shortComment: summary })
@@ -138,8 +104,6 @@ export default function Home() {
       reason: "",
       shortComment: ""
     });
-
-    setLoading(false);
   };
 
   // ✅ 日付
@@ -154,7 +118,21 @@ export default function Home() {
     setForm(prev => ({ ...prev, date: d }));
   };
 
+  // ✅ 日曜チェック
   const isSunday = selectedDate.getDay() === 0;
+
+  // ✅ 週間AI
+  const generateWeeklySummary = async () => {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        data: { text: JSON.stringify(entries.slice(0, 7)) }
+      })
+    });
+
+    const result = await res.json();
+    setWeekSummary(result.result);
+  };
 
   // ✅ グラフ
   const total = entries.length;
@@ -165,8 +143,10 @@ export default function Home() {
     <div className="container">
       <h1>自己改善日記</h1>
 
+      {/* ✅ カレンダー */}
       <Calendar onChange={handleDateChange} value={selectedDate} />
 
+      {/* ✅ 入力欄 */}
       <FormBox label="今日の気分">
         <textarea name="emotion" value={form.emotion} onChange={handleChange}/>
       </FormBox>
@@ -183,24 +163,22 @@ export default function Home() {
         <textarea name="honest" value={form.honest} onChange={handleChange}/>
       </FormBox>
 
-      {/* ✅ 色付きボタン */}
+      {/* ✅ ボタン */}
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
+
           <button
             type="button"
             onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
             className={`btn ${form.relied === "yes" ? "yes active" : ""}`}
-          >
-            はい
-          </button>
+          >はい</button>
 
           <button
             type="button"
             onClick={() => setForm(p => ({ ...p, relied: "no" }))}
             className={`btn ${form.relied === "no" ? "no active" : ""}`}
-          >
-            いいえ
-          </button>
+          >いいえ</button>
+
         </div>
       </FormBox>
 
@@ -213,16 +191,19 @@ export default function Home() {
       </FormBox>
 
       <button type="button" className="save" onClick={saveData}>
-        {loading ? "生成中..." : "保存"}
+        保存
       </button>
 
       {/* ✅ グラフ */}
       <h2>頼れ率 {rate}%</h2>
       <div className="bar">
-        <div className="fill" style={{
-          width: `${rate}%`,
-          background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
-        }}/>
+        <div
+          className="fill"
+          style={{
+            width: `${rate}%`,
+            background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
+          }}
+        />
       </div>
 
       {/* ✅ 日曜AI */}
@@ -235,6 +216,20 @@ export default function Home() {
           {weekSummary && <p>{weekSummary}</p>}
         </div>
       )}
+
+      {/* ✅ ✅ ✅ 記録一覧（超重要） */}
+      <h2>記録一覧</h2>
+
+      {entries.map((entry) => (
+        <div key={entry.id} className="card">
+          <strong>{entry.date}</strong>
+
+          <p><b>🧠 {entry.shortComment}</b></p>
+          <p>😊 {entry.emotion}</p>
+          <p>📌 {entry.event}</p>
+          <p>🏃 {entry.action}</p>
+        </div>
+      ))}
 
       {/* ✅ スタイル */}
       <style jsx global>{`
@@ -270,7 +265,7 @@ export default function Home() {
         }
 
         .btn {
-          padding: 8px 12px;
+          padding: 8px;
           border-radius: 6px;
           border: none;
           background: gray;
@@ -278,35 +273,34 @@ export default function Home() {
           opacity: 0.5;
         }
 
-        .active {
-          opacity: 1;
-        }
-
+        .active { opacity: 1; }
         .yes.active { background: #00c853; }
         .no.active { background: #d50000; }
 
         .save {
-          margin-top: 10px;
           width: 100%;
           padding: 10px;
+          margin-top: 10px;
         }
 
         .bar {
-          background: #ddd;
+          background: #ccc;
           height: 10px;
-          margin: 10px 0;
         }
 
         .fill { height: 100%; }
-
-        @media (prefers-color-scheme: dark) {
-          .bar { background: #444; }
-        }
 
         .weekly {
           margin-top: 15px;
           padding: 10px;
           border: 2px solid gray;
+        }
+
+        .card {
+          border: 1px solid gray;
+          margin-top: 10px;
+          padding: 10px;
+          border-radius: 8px;
         }
 
         /* ✅ カレンダー */
@@ -322,11 +316,6 @@ export default function Home() {
 
           .react-calendar__tile--now {
             background: orange !important;
-            color: black !important;
-          }
-
-          .react-calendar__tile--active {
-            background: #2196f3 !important;
           }
         }
 
