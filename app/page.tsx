@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* ✅ 外に出す（重要） */
+/* ✅ 外に出す */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -45,7 +45,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ 入力
+  // ✅ 入力（バグ防止）
   const handleChange = (e: any) => {
     const { name, value } = e.target;
 
@@ -55,23 +55,35 @@ export default function Home() {
     }));
   };
 
-  // ✅ AI
+  // ✅ AI（デバッグ強化）
   const generateAI = async (data: any) => {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        data: {
-          ...data,
-          history: JSON.stringify(entries.slice(0, 10))
-        }
-      })
-    });
+    console.log("AI開始");
 
-    const result = await res.json();
-    return result.result;
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        body: JSON.stringify({ data })
+      });
+
+      console.log("レスポンス受信");
+
+      if (!res.ok) {
+        console.error("APIエラー", res.status);
+        return "AI生成失敗";
+      }
+
+      const result = await res.json();
+      console.log("AI結果", result);
+
+      return result.result;
+
+    } catch (e) {
+      console.error("AIエラー", e);
+      return "エラー発生";
+    }
   };
 
-  // ✅ 週間まとめ
+  // ✅ 週間AI
   const generateWeeklySummary = async () => {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -84,16 +96,34 @@ export default function Home() {
     setWeekSummary(result.result);
   };
 
-  // ✅ 保存
+  // ✅ 保存（高速化 + デバッグ）
   const saveData = async () => {
+    console.log("保存開始");
+
     setLoading(true);
 
-    let summary = form.shortComment;
-    if (!summary) summary = await generateAI(form);
+    // ✅ 即保存
+    const { data } = await supabase
+      .from("diary")
+      .insert([{
+        ...form,
+        shortComment: "生成中..."
+      }])
+      .select();
 
-    const newEntry = { ...form, shortComment: summary };
+    fetchData();
 
-    await supabase.from("diary").insert([newEntry]);
+    // ✅ AI生成
+    const summary = await generateAI(form);
+
+    console.log("AI完了", summary);
+
+    if (data && data[0]) {
+      await supabase
+        .from("diary")
+        .update({ shortComment: summary })
+        .eq("id", data[0].id);
+    }
 
     fetchData();
 
@@ -153,7 +183,7 @@ export default function Home() {
         <textarea name="honest" value={form.honest} onChange={handleChange}/>
       </FormBox>
 
-      {/* ✅ ボタン色分け */}
+      {/* ✅ 色付きボタン */}
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
           <button
@@ -186,19 +216,16 @@ export default function Home() {
         {loading ? "生成中..." : "保存"}
       </button>
 
-      {/* ✅ 頼れ率 */}
+      {/* ✅ グラフ */}
       <h2>頼れ率 {rate}%</h2>
       <div className="bar">
-        <div
-          className="fill"
-          style={{
-            width: `${rate}%`,
-            background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
-          }}
-        />
+        <div className="fill" style={{
+          width: `${rate}%`,
+          background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
+        }}/>
       </div>
 
-      {/* ✅ 日曜日限定 */}
+      {/* ✅ 日曜AI */}
       {isSunday && (
         <div className="weekly">
           <h2>週間まとめAI</h2>
@@ -242,7 +269,6 @@ export default function Home() {
           border-radius: 8px;
         }
 
-        /* ✅ ボタン */
         .btn {
           padding: 8px 12px;
           border-radius: 6px;
@@ -256,36 +282,25 @@ export default function Home() {
           opacity: 1;
         }
 
-        .yes.active {
-          background: #00c853;
-        }
-
-        .no.active {
-          background: #d50000;
-        }
+        .yes.active { background: #00c853; }
+        .no.active { background: #d50000; }
 
         .save {
           margin-top: 10px;
           width: 100%;
           padding: 10px;
-          border-radius: 8px;
         }
 
-        /* ✅ グラフ */
         .bar {
           background: #ddd;
           height: 10px;
           margin: 10px 0;
         }
 
-        .fill {
-          height: 100%;
-        }
+        .fill { height: 100%; }
 
         @media (prefers-color-scheme: dark) {
-          .bar {
-            background: #444;
-          }
+          .bar { background: #444; }
         }
 
         .weekly {
@@ -294,7 +309,7 @@ export default function Home() {
           border: 2px solid gray;
         }
 
-        /* ✅ カレンダー（ダーク対応） */
+        /* ✅ カレンダー */
         @media (prefers-color-scheme: dark) {
           .react-calendar {
             background: #222 !important;
