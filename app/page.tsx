@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* ✅ 外に出す */
+/* ✅ UI箱 */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -15,7 +15,6 @@ const FormBox = ({ label, children }: any) => (
 export default function Home() {
 
   const [form, setForm] = useState({
-    id: "",
     date: "",
     emotion: "",
     event: "",
@@ -32,10 +31,14 @@ export default function Home() {
 
   // ✅ データ取得
   const fetchData = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("diary")
       .select("*")
       .order("date", { ascending: false });
+
+    if (error) {
+      console.error("取得エラー", error);
+    }
 
     setEntries(data || []);
   };
@@ -53,7 +56,7 @@ export default function Home() {
     }));
   };
 
-  // ✅ AI生成
+  // ✅ AI
   const generateAI = async (data: any) => {
     try {
       const res = await fetch("/api/generate", {
@@ -69,32 +72,51 @@ export default function Home() {
     }
   };
 
-  // ✅ 保存（即保存→AI更新）
+  // ✅ 保存（エラー表示付き）
   const saveData = async () => {
 
-    const { data } = await supabase
+    console.log("送信データ", form);
+
+    // ✅ 保存
+    const { data, error } = await supabase
       .from("diary")
-      .insert([{
-        ...form,
-        shortComment: "生成中..."
-      }])
+      .insert([
+        {
+          date: form.date,
+          emotion: form.emotion,
+          event: form.event,
+          action: form.action,
+          honest: form.honest,
+          relied: form.relied,
+          reason: form.reason,
+          shortcomment: "生成中..." // ⚠ DBに合わせる
+        }
+      ])
       .select();
+
+    if (error) {
+      console.error("保存エラー", error);
+      alert("保存失敗：" + error.message);
+      return;
+    }
 
     fetchData();
 
+    // ✅ AI生成
     const summary = await generateAI(form);
 
+    // ✅ 更新
     if (data?.[0]) {
       await supabase
         .from("diary")
-        .update({ shortComment: summary })
+        .update({ shortcomment: summary }) // ⚠ DBに合わせる
         .eq("id", data[0].id);
     }
 
     fetchData();
 
+    // ✅ リセット
     setForm({
-      id: "",
       date: "",
       emotion: "",
       event: "",
@@ -118,22 +140,6 @@ export default function Home() {
     setForm(prev => ({ ...prev, date: d }));
   };
 
-  // ✅ 日曜チェック
-  const isSunday = selectedDate.getDay() === 0;
-
-  // ✅ 週間AI
-  const generateWeeklySummary = async () => {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        data: { text: JSON.stringify(entries.slice(0, 7)) }
-      })
-    });
-
-    const result = await res.json();
-    setWeekSummary(result.result);
-  };
-
   // ✅ グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
@@ -143,10 +149,8 @@ export default function Home() {
     <div className="container">
       <h1>自己改善日記</h1>
 
-      {/* ✅ カレンダー */}
       <Calendar onChange={handleDateChange} value={selectedDate} />
 
-      {/* ✅ 入力欄 */}
       <FormBox label="今日の気分">
         <textarea name="emotion" value={form.emotion} onChange={handleChange}/>
       </FormBox>
@@ -163,10 +167,8 @@ export default function Home() {
         <textarea name="honest" value={form.honest} onChange={handleChange}/>
       </FormBox>
 
-      {/* ✅ ボタン */}
       <FormBox label="頼れた？">
         <div style={{ display: "flex", gap: "10px" }}>
-
           <button
             type="button"
             onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
@@ -178,7 +180,6 @@ export default function Home() {
             onClick={() => setForm(p => ({ ...p, relied: "no" }))}
             className={`btn ${form.relied === "no" ? "no active" : ""}`}
           >いいえ</button>
-
         </div>
       </FormBox>
 
@@ -197,41 +198,24 @@ export default function Home() {
       {/* ✅ グラフ */}
       <h2>頼れ率 {rate}%</h2>
       <div className="bar">
-        <div
-          className="fill"
-          style={{
-            width: `${rate}%`,
-            background: rate > 60 ? "green" : rate > 30 ? "orange" : "red"
-          }}
-        />
+        <div className="fill" style={{ width: `${rate}%` }} />
       </div>
 
-      {/* ✅ 日曜AI */}
-      {isSunday && (
-        <div className="weekly">
-          <h2>週間まとめAI</h2>
-          <button type="button" onClick={generateWeeklySummary}>
-            生成
-          </button>
-          {weekSummary && <p>{weekSummary}</p>}
-        </div>
-      )}
-
-      {/* ✅ ✅ ✅ 記録一覧（超重要） */}
+      {/* ✅ 一覧 */}
       <h2>記録一覧</h2>
 
-      {entries.map((entry) => (
+      {entries.length === 0 && <p>まだデータがありません</p>}
+
+      {entries.map(entry => (
         <div key={entry.id} className="card">
           <strong>{entry.date}</strong>
-
-          <p><b>🧠 {entry.shortComment}</b></p>
-          <p>😊 {entry.emotion}</p>
-          <p>📌 {entry.event}</p>
-          <p>🏃 {entry.action}</p>
+          <p><b>{entry.shortcomment}</b></p>
+          <p>{entry.emotion}</p>
+          <p>{entry.event}</p>
         </div>
       ))}
 
-      {/* ✅ スタイル */}
+      {/* ✅ CSS */}
       <style jsx global>{`
 
         body {
@@ -267,15 +251,14 @@ export default function Home() {
         .btn {
           padding: 8px;
           border-radius: 6px;
-          border: none;
           background: gray;
           color: white;
           opacity: 0.5;
         }
 
         .active { opacity: 1; }
-        .yes.active { background: #00c853; }
-        .no.active { background: #d50000; }
+        .yes.active { background: green; }
+        .no.active { background: red; }
 
         .save {
           width: 100%;
@@ -288,35 +271,16 @@ export default function Home() {
           height: 10px;
         }
 
-        .fill { height: 100%; }
-
-        .weekly {
-          margin-top: 15px;
-          padding: 10px;
-          border: 2px solid gray;
+        .fill {
+          background: green;
+          height: 100%;
         }
 
         .card {
           border: 1px solid gray;
-          margin-top: 10px;
           padding: 10px;
+          margin-top: 10px;
           border-radius: 8px;
-        }
-
-        /* ✅ カレンダー */
-        @media (prefers-color-scheme: dark) {
-          .react-calendar {
-            background: #222 !important;
-            color: white !important;
-          }
-
-          .react-calendar__tile {
-            color: white !important;
-          }
-
-          .react-calendar__tile--now {
-            background: orange !important;
-          }
         }
 
       `}</style>
