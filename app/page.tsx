@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-// UI箱
+/* UI */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -23,6 +23,15 @@ export default function Home() {
     relied: "",
     reason: "",
     shortComment: ""
+  });
+
+  // ✅ 習慣分析
+  const [habit, setHabit] = useState({
+    awareness: "",
+    done: "",
+    nextGoal: "",
+    minimum: "",
+    tomorrow: ""
   });
 
   const [entries, setEntries] = useState<any[]>([]);
@@ -47,10 +56,7 @@ export default function Home() {
   // 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setForm(p => ({ ...p, [name]: value }));
   };
 
   // ✅ ランダム応援
@@ -60,16 +66,16 @@ export default function Home() {
       const good = [
         "ちゃんと頼れていてすごいね",
         "自分を大切にできているよ",
-        "いい選択ができている",
-        "それは大きな成長だよ"
+        "いい判断ができている",
+        "素晴らしい成長だよ"
       ];
       return good[Math.floor(Math.random() * good.length)];
     }
 
     const normal = [
       "今日も頑張れていてえらい",
-      "小さくても前進しているよ",
-      "無理せず続けられているのが強い",
+      "少しずつ前進しているよ",
+      "無理せず続けていてすごい",
       "今日もお疲れさま",
       "その積み重ねが未来を作る"
     ];
@@ -88,7 +94,14 @@ export default function Home() {
 
     await supabase.from("diary").insert([{
       ...form,
-      shortComment: summary
+      shortComment: summary,
+
+      // ✅ 習慣分析
+      awareness: habit.awareness,
+      done: habit.done,
+      nextGoal: habit.nextGoal,
+      minimum: habit.minimum,
+      tomorrow: habit.tomorrow
     }]);
 
     await fetchData();
@@ -102,6 +115,14 @@ export default function Home() {
       relied: "",
       reason: "",
       shortComment: ""
+    });
+
+    setHabit({
+      awareness: "",
+      done: "",
+      nextGoal: "",
+      minimum: "",
+      tomorrow: ""
     });
 
     setLoading(false);
@@ -144,7 +165,6 @@ export default function Home() {
       <Calendar
         onChange={handleDateChange}
         value={selectedDate}
-
         tileClassName={({ date }) => {
 
           const d =
@@ -163,10 +183,9 @@ export default function Home() {
         }}
       />
 
-      <button onClick={() => setFilteredEntries([])}>
-        全て表示
-      </button>
+      <button onClick={() => setFilteredEntries([])}>全て表示</button>
 
+      {/* ✅ 入力 */}
       <FormBox label="今日の気分">
         <textarea name="emotion" value={form.emotion} onChange={handleChange}/>
       </FormBox>
@@ -203,6 +222,34 @@ export default function Home() {
         <textarea name="reason" value={form.reason} onChange={handleChange}/>
       </FormBox>
 
+      {/* ✅ 習慣分析 */}
+      <h2>習慣分析</h2>
+
+      <FormBox label="意識したこと">
+        <textarea value={habit.awareness}
+          onChange={(e) => setHabit(p => ({ ...p, awareness: e.target.value }))}/>
+      </FormBox>
+
+      <FormBox label="できていたか">
+        <textarea value={habit.done}
+          onChange={(e) => setHabit(p => ({ ...p, done: e.target.value }))}/>
+      </FormBox>
+
+      <FormBox label="来週の目標">
+        <textarea value={habit.nextGoal}
+          onChange={(e) => setHabit(p => ({ ...p, nextGoal: e.target.value }))}/>
+      </FormBox>
+
+      <FormBox label="最低限すること">
+        <textarea value={habit.minimum}
+          onChange={(e) => setHabit(p => ({ ...p, minimum: e.target.value }))}/>
+      </FormBox>
+
+      <FormBox label="明日すること">
+        <textarea value={habit.tomorrow}
+          onChange={(e) => setHabit(p => ({ ...p, tomorrow: e.target.value }))}/>
+      </FormBox>
+
       <button className="save" onClick={saveData}>
         {loading ? "保存中..." : "保存"}
       </button>
@@ -226,7 +273,6 @@ export default function Home() {
           <p>📌 {entry.event}</p>
           <p>🏃 {entry.action}</p>
 
-          {/* ✅ 追加ここ */}
           <p>
             🤝 頼れた？
             {entry.relied === "yes" ? " ✅ はい" : " ❌ いいえ"}
@@ -234,9 +280,14 @@ export default function Home() {
 
           <p>💡 理由：{entry.reason}</p>
 
-          <button onClick={() => deleteEntry(entry.id)}>
-            削除
-          </button>
+          {/* ✅ 習慣分析表示 */}
+          <p>🎯 意識：{entry.awareness}</p>
+          <p>✅ できた？：{entry.done}</p>
+          <p>🚀 来週：{entry.nextGoal}</p>
+          <p>🧱 最低限：{entry.minimum}</p>
+          <p>📅 明日：{entry.tomorrow}</p>
+
+          <button onClick={() => deleteEntry(entry.id)}>削除</button>
         </div>
       ))}
 
@@ -270,19 +321,11 @@ export default function Home() {
           padding: 8px;
           border-radius: 6px;
           background: gray;
-          color: white;
           opacity: 0.5;
         }
 
-        .yes.active {
-          background: #00c853;
-          opacity: 1;
-        }
-
-        .no.active {
-          background: #d50000;
-          opacity: 1;
-        }
+        .yes.active { background: #00c853; opacity:1; }
+        .no.active { background: #d50000; opacity:1; }
 
         .save {
           width: 100%;
@@ -307,34 +350,23 @@ export default function Home() {
           border-radius: 8px;
         }
 
-        /* ✅ カレンダー改善版 */
+        /* ✅ カレンダー */
         .react-calendar {
           background: #222 !important;
-          color: white !important;
         }
 
         .react-calendar__tile.day-yes {
           background: rgba(0,200,83,0.25) !important;
           color: #00e676 !important;
-          border-radius: 8px !important;
         }
 
         .react-calendar__tile.day-no {
           background: rgba(213,0,0,0.25) !important;
           color: #ff5252 !important;
-          border-radius: 8px !important;
-        }
-
-        .react-calendar__tile--active {
-          background: #2196f3 !important;
-          color: white !important;
-        }
-
-        .react-calendar__tile--now {
-          border: 2px solid yellow !important;
         }
 
       `}</style>
     </div>
   );
 }
+``
