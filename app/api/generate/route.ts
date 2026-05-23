@@ -3,7 +3,7 @@ export async function POST(req: Request) {
       const { data } = await req.json();
   
       const prompt = `
-  今日の内容を一言で優しくまとめてください：
+  今日の出来事を一言でまとめてください：
   
   気分：${data.emotion}
   出来事：${data.event}
@@ -11,11 +11,11 @@ export async function POST(req: Request) {
   本音：${data.honest}
   `;
   
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
@@ -25,30 +25,32 @@ export async function POST(req: Request) {
         })
       });
   
-      const json = await response.json();
+      const json = await res.json();
   
-      // ✅ ここ超重要（ログで確認）
-      console.log("AI完全レスポンス:", JSON.stringify(json, null, 2));
+      console.log("=== OpenAIレスポンス ===");
+      console.log(JSON.stringify(json, null, 2));
   
+      // ✅ 安全に取り出す（これが重要）
       let text = "生成失敗";
   
-      // ✅ 安全に取り出す
-      if (json && json.choices && json.choices.length > 0) {
-        if (json.choices[0].message && json.choices[0].message.content) {
-          text = json.choices[0].message.content;
-        }
+      if (
+        json &&
+        typeof json === "object" &&
+        Array.isArray(json.choices) &&
+        json.choices.length > 0 &&
+        json.choices[0].message &&
+        typeof json.choices[0].message.content === "string"
+      ) {
+        text = json.choices[0].message.content;
       }
   
-      return new Response(JSON.stringify({
-        result: text
-      }), { status: 200 });
+      return Response.json({ result: text });
   
-    } catch (e) {
-      console.error("AIエラー:", e);
+    } catch (err) {
+      console.error("=== APIエラー ===", err);
   
-      return new Response(JSON.stringify({
+      return Response.json({
         result: "AIエラー"
-      }), { status: 200 });
+      });
     }
   }
-  
