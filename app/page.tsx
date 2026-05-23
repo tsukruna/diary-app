@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-/* UI箱 */
+// UI箱
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -30,7 +30,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
-  // ✅ データ取得
+  // データ取得
   const fetchData = async () => {
     const { data } = await supabase
       .from("diary")
@@ -44,7 +44,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ 入力
+  // 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm(prev => ({
@@ -53,7 +53,7 @@ export default function Home() {
     }));
   };
 
-  // ✅ ランダムコメント
+  // ✅ ランダム応援
   const generateMessage = () => {
 
     if (form.relied === "yes") {
@@ -61,29 +61,26 @@ export default function Home() {
         "ちゃんと頼れていてすごいね",
         "自分を大切にできているよ",
         "いい選択ができている",
-        "それはすごい成長だよ"
+        "それは大きな成長だよ"
       ];
       return good[Math.floor(Math.random() * good.length)];
     }
 
     const normal = [
       "今日も頑張れていてえらい",
-      "小さくても前進してるよ",
-      "その積み重ねが未来を作る",
-      "無理せず続けるのが一番強い",
-      "今日もお疲れさま"
+      "小さくても前進しているよ",
+      "無理せず続けられているのが強い",
+      "今日もお疲れさま",
+      "その積み重ねが未来を作る"
     ];
 
     return normal[Math.floor(Math.random() * normal.length)];
   };
 
-  // ✅ 保存
+  // 保存
   const saveData = async () => {
 
-    if (!form.date) {
-      alert("日付を選択してください");
-      return;
-    }
+    if (!form.date) return alert("日付を選択してください");
 
     setLoading(true);
 
@@ -110,13 +107,13 @@ export default function Home() {
     setLoading(false);
   };
 
-  // ✅ 削除
+  // 削除
   const deleteEntry = async (id: string) => {
     await supabase.from("diary").delete().eq("id", id);
     fetchData();
   };
 
-  // ✅ カレンダークリック
+  // カレンダークリック
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -125,18 +122,16 @@ export default function Home() {
       String(date.getMonth() + 1).padStart(2, '0') + "-" +
       String(date.getDate()).padStart(2, '0');
 
-    setForm(prev => ({ ...prev, date: d }));
+    setForm(p => ({ ...p, date: d }));
 
-    // ✅ 日付フィルター
     const filtered = entries.filter(e => e.date === d);
     setFilteredEntries(filtered);
   };
 
-  // ✅ 表示切替
   const displayEntries =
     filteredEntries.length > 0 ? filteredEntries : entries;
 
-  // ✅ グラフ
+  // グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
   const rate = total ? Math.round((success / total) * 100) : 0;
@@ -145,10 +140,11 @@ export default function Home() {
     <div className="container">
       <h1>自己改善日記</h1>
 
-      {/* ✅ カレンダー（色分け） */}
+      {/* ✅ カレンダー */}
       <Calendar
         onChange={handleDateChange}
         value={selectedDate}
+
         tileClassName={({ date }) => {
 
           const d =
@@ -160,13 +156,8 @@ export default function Home() {
 
           if (dayEntries.length === 0) return "";
 
-          if (dayEntries.some(e => e.relied === "yes")) {
-            return "day-yes";
-          }
-
-          if (dayEntries.some(e => e.relied === "no")) {
-            return "day-no";
-          }
+          if (dayEntries.some(e => e.relied === "yes")) return "day-yes";
+          if (dayEntries.some(e => e.relied === "no")) return "day-no";
 
           return "";
         }}
@@ -198,17 +189,13 @@ export default function Home() {
             type="button"
             className={`btn ${form.relied === "yes" ? "yes active" : ""}`}
             onClick={() => setForm(p => ({ ...p, relied: "yes" }))}
-          >
-            はい
-          </button>
+          >はい</button>
 
           <button
             type="button"
             className={`btn ${form.relied === "no" ? "no active" : ""}`}
             onClick={() => setForm(p => ({ ...p, relied: "no" }))}
-          >
-            いいえ
-          </button>
+          >いいえ</button>
         </div>
       </FormBox>
 
@@ -216,7 +203,7 @@ export default function Home() {
         <textarea name="reason" value={form.reason} onChange={handleChange}/>
       </FormBox>
 
-      <button type="button" className="save" onClick={saveData}>
+      <button className="save" onClick={saveData}>
         {loading ? "保存中..." : "保存"}
       </button>
 
@@ -234,9 +221,18 @@ export default function Home() {
           <strong>{entry.date}</strong>
 
           <p><b>🧠 {entry.shortComment}</b></p>
+
           <p>😊 {entry.emotion}</p>
           <p>📌 {entry.event}</p>
           <p>🏃 {entry.action}</p>
+
+          {/* ✅ 追加ここ */}
+          <p>
+            🤝 頼れた？
+            {entry.relied === "yes" ? " ✅ はい" : " ❌ いいえ"}
+          </p>
+
+          <p>💡 理由：{entry.reason}</p>
 
           <button onClick={() => deleteEntry(entry.id)}>
             削除
@@ -244,19 +240,12 @@ export default function Home() {
         </div>
       ))}
 
-      {/* ✅ スタイル */}
+      {/* ✅ CSS */}
       <style jsx global>{`
 
         body {
-          background: white;
-          color: black;
-        }
-
-        @media (prefers-color-scheme: dark) {
-          body {
-            background: #111;
-            color: white;
-          }
+          background: #111;
+          color: white;
         }
 
         .container {
@@ -285,8 +274,15 @@ export default function Home() {
           opacity: 0.5;
         }
 
-        .yes.active { background: green; opacity: 1; }
-        .no.active { background: red; opacity: 1; }
+        .yes.active {
+          background: #00c853;
+          opacity: 1;
+        }
+
+        .no.active {
+          background: #d50000;
+          opacity: 1;
+        }
 
         .save {
           width: 100%;
@@ -295,7 +291,7 @@ export default function Home() {
         }
 
         .bar {
-          background: #ccc;
+          background: #444;
           height: 10px;
         }
 
@@ -311,21 +307,34 @@ export default function Home() {
           border-radius: 8px;
         }
 
-        /* ✅ カレンダー色分け */
-        .day-yes {
-          background: #00c853 !important;
+        /* ✅ カレンダー改善版 */
+        .react-calendar {
+          background: #222 !important;
           color: white !important;
-          border-radius: 50%;
         }
 
-        .day-no {
-          background: #d50000 !important;
+        .react-calendar__tile.day-yes {
+          background: rgba(0,200,83,0.25) !important;
+          color: #00e676 !important;
+          border-radius: 8px !important;
+        }
+
+        .react-calendar__tile.day-no {
+          background: rgba(213,0,0,0.25) !important;
+          color: #ff5252 !important;
+          border-radius: 8px !important;
+        }
+
+        .react-calendar__tile--active {
+          background: #2196f3 !important;
           color: white !important;
-          border-radius: 50%;
+        }
+
+        .react-calendar__tile--now {
+          border: 2px solid yellow !important;
         }
 
       `}</style>
     </div>
   );
 }
-``
