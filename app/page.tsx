@@ -25,7 +25,6 @@ export default function Home() {
     shortComment: ""
   });
 
-  // ✅ 習慣分析
   const [habit, setHabit] = useState({
     awareness: "",
     done: "",
@@ -39,7 +38,10 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
-  // データ取得
+  // ✅ 日曜日判定
+  const isSunday = selectedDate.getDay() === 0;
+
+  // ✅ データ取得
   const fetchData = async () => {
     const { data } = await supabase
       .from("diary")
@@ -53,7 +55,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // 入力
+  // ✅ 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm(p => ({ ...p, [name]: value }));
@@ -83,7 +85,7 @@ export default function Home() {
     return normal[Math.floor(Math.random() * normal.length)];
   };
 
-  // 保存
+  // ✅ 保存
   const saveData = async () => {
 
     if (!form.date) return alert("日付を選択してください");
@@ -101,6 +103,8 @@ export default function Home() {
       done: habit.done,
       nextGoal: habit.nextGoal,
       minimum: habit.minimum,
+
+      // ✅ 毎日
       tomorrow: habit.tomorrow
     }]);
 
@@ -128,13 +132,13 @@ export default function Home() {
     setLoading(false);
   };
 
-  // 削除
+  // ✅ 削除
   const deleteEntry = async (id: string) => {
     await supabase.from("diary").delete().eq("id", id);
     fetchData();
   };
 
-  // カレンダークリック
+  // ✅ カレンダークリック
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -152,7 +156,7 @@ export default function Home() {
   const displayEntries =
     filteredEntries.length > 0 ? filteredEntries : entries;
 
-  // グラフ
+  // ✅ グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
   const rate = total ? Math.round((success / total) * 100) : 0;
@@ -183,9 +187,11 @@ export default function Home() {
         }}
       />
 
-      <button onClick={() => setFilteredEntries([])}>全て表示</button>
+      <button onClick={() => setFilteredEntries([])}>
+        全て表示
+      </button>
 
-      {/* ✅ 入力 */}
+      {/* ✅ 通常入力 */}
       <FormBox label="今日の気分">
         <textarea name="emotion" value={form.emotion} onChange={handleChange}/>
       </FormBox>
@@ -222,29 +228,34 @@ export default function Home() {
         <textarea name="reason" value={form.reason} onChange={handleChange}/>
       </FormBox>
 
-      {/* ✅ 習慣分析 */}
-      <h2>習慣分析</h2>
+      {/* ✅ 日曜だけ習慣分析 */}
+      {isSunday && (
+        <>
+          <h2>週間分析</h2>
 
-      <FormBox label="意識したこと">
-        <textarea value={habit.awareness}
-          onChange={(e) => setHabit(p => ({ ...p, awareness: e.target.value }))}/>
-      </FormBox>
+          <FormBox label="意識したこと">
+            <textarea value={habit.awareness}
+              onChange={(e) => setHabit(p => ({ ...p, awareness: e.target.value }))}/>
+          </FormBox>
 
-      <FormBox label="できていたか">
-        <textarea value={habit.done}
-          onChange={(e) => setHabit(p => ({ ...p, done: e.target.value }))}/>
-      </FormBox>
+          <FormBox label="できていたか">
+            <textarea value={habit.done}
+              onChange={(e) => setHabit(p => ({ ...p, done: e.target.value }))}/>
+          </FormBox>
 
-      <FormBox label="来週の目標">
-        <textarea value={habit.nextGoal}
-          onChange={(e) => setHabit(p => ({ ...p, nextGoal: e.target.value }))}/>
-      </FormBox>
+          <FormBox label="来週の目標">
+            <textarea value={habit.nextGoal}
+              onChange={(e) => setHabit(p => ({ ...p, nextGoal: e.target.value }))}/>
+          </FormBox>
 
-      <FormBox label="最低限すること">
-        <textarea value={habit.minimum}
-          onChange={(e) => setHabit(p => ({ ...p, minimum: e.target.value }))}/>
-      </FormBox>
+          <FormBox label="最低限すること">
+            <textarea value={habit.minimum}
+              onChange={(e) => setHabit(p => ({ ...p, minimum: e.target.value }))}/>
+          </FormBox>
+        </>
+      )}
 
+      {/* ✅ 毎日：明日やること */}
       <FormBox label="明日すること">
         <textarea value={habit.tomorrow}
           onChange={(e) => setHabit(p => ({ ...p, tomorrow: e.target.value }))}/>
@@ -280,11 +291,17 @@ export default function Home() {
 
           <p>💡 理由：{entry.reason}</p>
 
-          {/* ✅ 習慣分析表示 */}
-          <p>🎯 意識：{entry.awareness}</p>
-          <p>✅ できた？：{entry.done}</p>
-          <p>🚀 来週：{entry.nextGoal}</p>
-          <p>🧱 最低限：{entry.minimum}</p>
+          {/* ✅ 日曜のみ表示 */}
+          {entry.awareness && (
+            <>
+              <p>🎯 意識：{entry.awareness}</p>
+              <p>✅ できた？：{entry.done}</p>
+              <p>🚀 来週：{entry.nextGoal}</p>
+              <p>🧱 最低限：{entry.minimum}</p>
+            </>
+          )}
+
+          {/* ✅ 毎日 */}
           <p>📅 明日：{entry.tomorrow}</p>
 
           <button onClick={() => deleteEntry(entry.id)}>削除</button>
@@ -324,8 +341,8 @@ export default function Home() {
           opacity: 0.5;
         }
 
-        .yes.active { background: #00c853; opacity:1; }
-        .no.active { background: #d50000; opacity:1; }
+        .yes.active { background:#00c853; opacity:1; }
+        .no.active { background:#d50000; opacity:1; }
 
         .save {
           width: 100%;
@@ -350,7 +367,7 @@ export default function Home() {
           border-radius: 8px;
         }
 
-        /* ✅ カレンダー */
+        /* カレンダー */
         .react-calendar {
           background: #222 !important;
         }
@@ -369,4 +386,3 @@ export default function Home() {
     </div>
   );
 }
-``
