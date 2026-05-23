@@ -3,7 +3,7 @@ export async function POST(req: Request) {
       const { data } = await req.json();
   
       const prompt = `
-  今日の出来事を一言でまとめてください：
+  今日の内容を一言で優しくまとめてください：
   
   気分：${data.emotion}
   出来事：${data.event}
@@ -27,30 +27,31 @@ export async function POST(req: Request) {
   
       const json = await res.json();
   
-      console.log("=== OpenAIレスポンス ===");
+      console.log("=== OpenAI 生データ ===");
       console.log(JSON.stringify(json, null, 2));
   
-      // ✅ 安全に取り出す（これが重要）
       let text = "生成失敗";
   
-      if (
-        json &&
-        typeof json === "object" &&
-        Array.isArray(json.choices) &&
-        json.choices.length > 0 &&
-        json.choices[0].message &&
-        typeof json.choices[0].message.content === "string"
-      ) {
+      // ✅ パターン①（通常）
+      if (json?.choices?.[0]?.message?.content) {
         text = json.choices[0].message.content;
       }
   
-      return Response.json({ result: text });
+      // ✅ パターン②（新形式）
+      else if (json?.output?.[0]?.content?.[0]?.text) {
+        text = json.output[0].content[0].text;
+      }
+  
+      return Response.json({
+        result: text
+      });
   
     } catch (err) {
-      console.error("=== APIエラー ===", err);
+      console.error("AIエラー:", err);
   
       return Response.json({
         result: "AIエラー"
       });
     }
   }
+  ``
