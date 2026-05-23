@@ -3,13 +3,11 @@ export async function POST(req: Request) {
       const { data } = await req.json();
   
       const prompt = `
-  あなたは自己改善をサポートするAIです。
   以下を優しく短くまとめてください：
   
   ${JSON.stringify(data)}
   `;
   
-      // ✅ fetchで直接API叩く（超安定）
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -26,9 +24,15 @@ export async function POST(req: Request) {
   
       const json = await response.json();
   
-      console.log("OpenAIレスポンス:", json);
+      // ✅ デバッグ表示（重要）
+      console.log("OpenAI full:", JSON.stringify(json));
   
-      const text = json?.choices?.[0]?.message?.content || "生成失敗";
+      // ✅ 安全取得
+      let text = "生成失敗";
+  
+      if (json.choices && json.choices.length > 0) {
+        text = json.choices[0].message?.content || "生成失敗";
+      }
   
       return new Response(JSON.stringify({
         result: text
@@ -39,7 +43,6 @@ export async function POST(req: Request) {
   
       return new Response(JSON.stringify({
         result: "AI生成エラー"
-      }), { status: 500 });
+      }), { status: 200 }); // ←ここ重要（UI止めない）
     }
   }
-  
