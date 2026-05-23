@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
-// フォームの箱
+/* UI箱 */
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -26,17 +26,17 @@ export default function Home() {
   });
 
   const [entries, setEntries] = useState<any[]>([]);
+  const [filteredEntries, setFilteredEntries] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
-  // データ取得
+  // ✅ データ取得
   const fetchData = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("diary")
       .select("*")
       .order("date", { ascending: false });
 
-    if (error) console.error(error);
     setEntries(data || []);
   };
 
@@ -44,7 +44,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // 入力処理
+  // ✅ 入力
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm(prev => ({
@@ -53,34 +53,31 @@ export default function Home() {
     }));
   };
 
-  // ✅ ランダム応援メッセージ（AI代わり）
+  // ✅ ランダムコメント
   const generateMessage = () => {
 
     if (form.relied === "yes") {
       const good = [
         "ちゃんと頼れていてすごいね",
-        "自分を大切にできてるのが素晴らしい",
-        "いい判断ができてるよ",
-        "周りに頼れるのは強さだよ"
+        "自分を大切にできているよ",
+        "いい選択ができている",
+        "それはすごい成長だよ"
       ];
       return good[Math.floor(Math.random() * good.length)];
     }
 
-    const messages = [
-      "今日もちゃんと頑張れていてすごいよ",
-      "小さくても前進してるのがえらい",
-      "無理せず続けてるのが一番強い",
-      "少しずつでいい、そのペースが大事",
-      "今日もよくやったね",
-      "ちゃんと向き合ってるだけで価値ある",
-      "その積み重ねが未来を変えるよ",
-      "疲れてても行動したのがすごい"
+    const normal = [
+      "今日も頑張れていてえらい",
+      "小さくても前進してるよ",
+      "その積み重ねが未来を作る",
+      "無理せず続けるのが一番強い",
+      "今日もお疲れさま"
     ];
 
-    return messages[Math.floor(Math.random() * messages.length)];
+    return normal[Math.floor(Math.random() * normal.length)];
   };
 
-  // 保存
+  // ✅ 保存
   const saveData = async () => {
 
     if (!form.date) {
@@ -92,19 +89,10 @@ export default function Home() {
 
     const summary = generateMessage();
 
-    const { error } = await supabase
-      .from("diary")
-      .insert([{
-        ...form,
-        shortComment: summary
-      }]);
-
-    if (error) {
-      console.error(error);
-      alert("保存失敗：" + error.message);
-      setLoading(false);
-      return;
-    }
+    await supabase.from("diary").insert([{
+      ...form,
+      shortComment: summary
+    }]);
 
     await fetchData();
 
@@ -122,13 +110,13 @@ export default function Home() {
     setLoading(false);
   };
 
-  // 削除
+  // ✅ 削除
   const deleteEntry = async (id: string) => {
     await supabase.from("diary").delete().eq("id", id);
     fetchData();
   };
 
-  // 日付変更
+  // ✅ カレンダークリック
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -138,9 +126,17 @@ export default function Home() {
       String(date.getDate()).padStart(2, '0');
 
     setForm(prev => ({ ...prev, date: d }));
+
+    // ✅ 日付フィルター
+    const filtered = entries.filter(e => e.date === d);
+    setFilteredEntries(filtered);
   };
 
-  // グラフ
+  // ✅ 表示切替
+  const displayEntries =
+    filteredEntries.length > 0 ? filteredEntries : entries;
+
+  // ✅ グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
   const rate = total ? Math.round((success / total) * 100) : 0;
@@ -149,7 +145,36 @@ export default function Home() {
     <div className="container">
       <h1>自己改善日記</h1>
 
-      <Calendar onChange={handleDateChange} value={selectedDate} />
+      {/* ✅ カレンダー（色分け） */}
+      <Calendar
+        onChange={handleDateChange}
+        value={selectedDate}
+        tileClassName={({ date }) => {
+
+          const d =
+            date.getFullYear() + "-" +
+            String(date.getMonth() + 1).padStart(2, '0') + "-" +
+            String(date.getDate()).padStart(2, '0');
+
+          const dayEntries = entries.filter(e => e.date === d);
+
+          if (dayEntries.length === 0) return "";
+
+          if (dayEntries.some(e => e.relied === "yes")) {
+            return "day-yes";
+          }
+
+          if (dayEntries.some(e => e.relied === "no")) {
+            return "day-no";
+          }
+
+          return "";
+        }}
+      />
+
+      <button onClick={() => setFilteredEntries([])}>
+        全て表示
+      </button>
 
       <FormBox label="今日の気分">
         <textarea name="emotion" value={form.emotion} onChange={handleChange}/>
@@ -195,16 +220,16 @@ export default function Home() {
         {loading ? "保存中..." : "保存"}
       </button>
 
-      {/* グラフ */}
+      {/* ✅ グラフ */}
       <h2>頼れ率 {rate}%</h2>
       <div className="bar">
         <div className="fill" style={{ width: `${rate}%` }} />
       </div>
 
-      {/* 一覧 */}
+      {/* ✅ 一覧 */}
       <h2>記録一覧</h2>
 
-      {entries.map(entry => (
+      {displayEntries.map(entry => (
         <div key={entry.id} className="card">
           <strong>{entry.date}</strong>
 
@@ -219,7 +244,7 @@ export default function Home() {
         </div>
       ))}
 
-      {/* スタイル */}
+      {/* ✅ スタイル */}
       <style jsx global>{`
 
         body {
@@ -231,19 +256,6 @@ export default function Home() {
           body {
             background: #111;
             color: white;
-          }
-
-          .react-calendar {
-            background: #222 !important;
-            color: white !important;
-          }
-
-          .react-calendar__tile {
-            color: white !important;
-          }
-
-          .react-calendar__tile--now {
-            background: orange !important;
           }
         }
 
@@ -273,9 +285,8 @@ export default function Home() {
           opacity: 0.5;
         }
 
-        .active { opacity: 1; }
-        .yes.active { background: green; }
-        .no.active { background: red; }
+        .yes.active { background: green; opacity: 1; }
+        .no.active { background: red; opacity: 1; }
 
         .save {
           width: 100%;
@@ -299,6 +310,20 @@ export default function Home() {
           padding: 10px;
           border-radius: 8px;
         }
+
+        /* ✅ カレンダー色分け */
+        .day-yes {
+          background: #00c853 !important;
+          color: white !important;
+          border-radius: 50%;
+        }
+
+        .day-no {
+          background: #d50000 !important;
+          color: white !important;
+          border-radius: 50%;
+        }
+
       `}</style>
     </div>
   );
