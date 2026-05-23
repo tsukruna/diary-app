@@ -4,6 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { supabase } from "@/lib/supabase";
 
+// フォームの箱
 const FormBox = ({ label, children }: any) => (
   <div className="box">
     <label>{label}</label>
@@ -26,10 +27,9 @@ export default function Home() {
 
   const [entries, setEntries] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [weekSummary, setWeekSummary] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ データ取得
+  // データ取得
   const fetchData = async () => {
     const { data, error } = await supabase
       .from("diary")
@@ -44,7 +44,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // ✅ 入力
+  // 入力処理
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm(prev => ({
@@ -53,22 +53,34 @@ export default function Home() {
     }));
   };
 
-  // ✅ AI生成
-  const generateAI = async (data: any) => {
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        body: JSON.stringify({ data })
-      });
+  // ✅ ランダム応援メッセージ（AI代わり）
+  const generateMessage = () => {
 
-      const json = await res.json();
-      return json.result || "AI生成に失敗しました";
-    } catch {
-      return "AIエラー";
+    if (form.relied === "yes") {
+      const good = [
+        "ちゃんと頼れていてすごいね",
+        "自分を大切にできてるのが素晴らしい",
+        "いい判断ができてるよ",
+        "周りに頼れるのは強さだよ"
+      ];
+      return good[Math.floor(Math.random() * good.length)];
     }
+
+    const messages = [
+      "今日もちゃんと頑張れていてすごいよ",
+      "小さくても前進してるのがえらい",
+      "無理せず続けてるのが一番強い",
+      "少しずつでいい、そのペースが大事",
+      "今日もよくやったね",
+      "ちゃんと向き合ってるだけで価値ある",
+      "その積み重ねが未来を変えるよ",
+      "疲れてても行動したのがすごい"
+    ];
+
+    return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  // ✅ 保存（重複防止・安定版）
+  // 保存
   const saveData = async () => {
 
     if (!form.date) {
@@ -78,37 +90,20 @@ export default function Home() {
 
     setLoading(true);
 
-    const { data, error } = await supabase
+    const summary = generateMessage();
+
+    const { error } = await supabase
       .from("diary")
       .insert([{
-        date: form.date,
-        emotion: form.emotion,
-        event: form.event,
-        action: form.action,
-        honest: form.honest,
-        relied: form.relied,
-        reason: form.reason,
-        shortComment: "生成中..."
-      }])
-      .select();
+        ...form,
+        shortComment: summary
+      }]);
 
     if (error) {
       console.error(error);
-      alert("保存エラー：" + error.message);
+      alert("保存失敗：" + error.message);
       setLoading(false);
       return;
-    }
-
-    await fetchData();
-
-    // ✅ AI更新
-    const summary = await generateAI(form);
-
-    if (data?.[0]) {
-      await supabase
-        .from("diary")
-        .update({ shortComment: summary })
-        .eq("id", data[0].id);
     }
 
     await fetchData();
@@ -127,13 +122,13 @@ export default function Home() {
     setLoading(false);
   };
 
-  // ✅ 削除
+  // 削除
   const deleteEntry = async (id: string) => {
     await supabase.from("diary").delete().eq("id", id);
     fetchData();
   };
 
-  // ✅ カレンダー
+  // 日付変更
   const handleDateChange = (date: any) => {
     setSelectedDate(date);
 
@@ -145,25 +140,10 @@ export default function Home() {
     setForm(prev => ({ ...prev, date: d }));
   };
 
-  // ✅ グラフ
+  // グラフ
   const total = entries.length;
   const success = entries.filter(e => e.relied === "yes").length;
   const rate = total ? Math.round((success / total) * 100) : 0;
-
-  // ✅ 週間AI
-  const isSunday = selectedDate.getDay() === 0;
-
-  const generateWeeklySummary = async () => {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        data: { text: JSON.stringify(entries.slice(0, 7)) }
-      })
-    });
-
-    const result = await res.json();
-    setWeekSummary(result.result);
-  };
 
   return (
     <div className="container">
@@ -215,24 +195,13 @@ export default function Home() {
         {loading ? "保存中..." : "保存"}
       </button>
 
-      {/* ✅ グラフ */}
+      {/* グラフ */}
       <h2>頼れ率 {rate}%</h2>
       <div className="bar">
         <div className="fill" style={{ width: `${rate}%` }} />
       </div>
 
-      {/* ✅ 週間AI */}
-      {isSunday && (
-        <div className="weekly">
-          <h2>週間まとめAI</h2>
-          <button type="button" onClick={generateWeeklySummary}>
-            生成
-          </button>
-          {weekSummary && <p>{weekSummary}</p>}
-        </div>
-      )}
-
-      {/* ✅ 一覧 */}
+      {/* 一覧 */}
       <h2>記録一覧</h2>
 
       {entries.map(entry => (
@@ -242,6 +211,7 @@ export default function Home() {
           <p><b>🧠 {entry.shortComment}</b></p>
           <p>😊 {entry.emotion}</p>
           <p>📌 {entry.event}</p>
+          <p>🏃 {entry.action}</p>
 
           <button onClick={() => deleteEntry(entry.id)}>
             削除
@@ -249,8 +219,9 @@ export default function Home() {
         </div>
       ))}
 
-      {/* ✅ style */}
+      {/* スタイル */}
       <style jsx global>{`
+
         body {
           background: white;
           color: black;
@@ -273,7 +244,6 @@ export default function Home() {
 
           .react-calendar__tile--now {
             background: orange !important;
-            color: black !important;
           }
         }
 
@@ -333,3 +303,4 @@ export default function Home() {
     </div>
   );
 }
+``
